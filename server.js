@@ -2,7 +2,7 @@ const cors = require("cors");
 const express = require("express");
 const firebase = require("firebase-admin");
 const app = express();
-const PORT = 3000;
+const PORT = 1599;
 
 // Initialize Firebase
 const servAcct = require("./fbsa.json");
@@ -16,7 +16,7 @@ firebase.initializeApp({
 const firestore = firebase.firestore();
 
 // Middleware
-const allowedOrigins = ['http://localhost:3000', 'https://nightshade.red'];
+const allowedOrigins = ['http://localhost:3000', 'https://nightshade.red', 'https://dev2.nightshade.red', 'https://can3.api.nightshade.red'];
 app.use(
     // CORS
     cors({
