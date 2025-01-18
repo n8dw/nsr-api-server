@@ -96,7 +96,8 @@ app.post("/v2/accounts/get/", async (req, res) => {
                             .get();
             bookmarkGroups.push({
                 id: groupID, 
-                title: groupData.docs[0].data().title
+                title: groupData.docs[0].data().title,
+                showOnHub: groupData.docs[0].data().showOnHub,
             });
         }));
     }
