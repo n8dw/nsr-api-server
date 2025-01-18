@@ -34,6 +34,11 @@ app.use(
 app.get("/", (req, res) => {
     res.sendFile(__dirname + "/index.html");
 });
+/* UPTIME SERVICE */
+app.get("/v2/platform/uptime/", (req, res) => {
+    // Return 200 OK
+    res.sendStatus(200);
+});
 
 /* ACCOUNTS */
 // 01 - Get Account
@@ -129,9 +134,11 @@ app.post("/v2/accounts/get/", async (req, res) => {
 app.post("/v2/bookmark/get/", async (req, res) => {
     // Get the a0UserId and groupID from the request body
     const { a0UserId, groupID } = req.body;
+    console.log('BODY', req.body);
 
     // If there's no a0UserId or groupID, return an error
     if (!a0UserId || !groupID) {
+        console.log('ERROR 400');
         return res.status(400).json({
             error: "No a0UserId or groupID provided",
         });
@@ -145,13 +152,16 @@ app.post("/v2/bookmark/get/", async (req, res) => {
 
     // Get the account data
     var account = accountRaw.docs[0].data();
+    console.log('FOUND ACCOUNT', 'account');
 
     // Get the group data
+    console.log('GET DATA');
     var groupData = await firestore.collection('athenaeum_roster')
                     .where('atID', '==', groupID)
                     .get();
 
     // Check publicity / access
+    console.log('CHECK PUBLICITY');
     if (groupData.docs[0].data().user !== account.accountNumber) {
         if (groupData.docs[0].data().access !== "public") {
             if (groupData.docs[0].data().userGroup === accountDetail.docs[0].data().userGroup[0]) {
@@ -167,15 +177,17 @@ app.post("/v2/bookmark/get/", async (req, res) => {
     }
 
     // Get the athenaeumData in the group
+    console.log('GET RECORDS');
     var athenaeumData = [];
-    for (let i = 0; i < groupData.docs[0].data().athenaeumData.length; i++) {
+    for (let i = 0; i < groupData.docs[0].data().recordIDs.length; i++) {
         var recordData = await firestore.collection('athenaeum_data')
-                        .where('id', '==', groupData.docs[0].data().athenaeumData[i])
+                        .where('recordID', '==', groupData.docs[0].data().recordIDs[i])
                         .get();
         athenaeumData.push(recordData.docs[0].data());
     }
 
     // Sort by title
+    console.log('SORT RECORDS');
     athenaeumData.sort((a, b) => {
         if (a.recordTitle < b.recordTitle) {
             return -1;
@@ -186,7 +198,7 @@ app.post("/v2/bookmark/get/", async (req, res) => {
         return 0;
     });
 
-    
+    console.log('RETURNING...');
     res.json({
         athenaeumData,
         access: groupData.docs[0].data().access,
@@ -199,13 +211,16 @@ app.post("/v2/bookmark/get/", async (req, res) => {
     });
 });
 
+
 // 02 - Create/Edit/Save Record
 app.post("/v2/bookmark/saverecord/", async (req, res) => {
     // Get a0UserId, recordID, recordTitle (string), recordCategory (string), recordTags (array), recordLinkToData and group ID from the request body
     const { a0UserId, recordID, recordTitle, recordCategory, recordTags, recordLinkToData, groupID } = req.body;
 
     // If any are missing, return an error
-    if (!a0UserId || !recordID || !recordTitle || !recordCategory || !recordTags || !recordLinkToData || !groupID) {
+    if (!a0UserId || !recordTitle || !recordCategory || !groupID) {
+        console.log('ERROR 400');
+        console.log('BODY', req.body);
         return res.status(400).json({
             error: "Missing data",
         });
@@ -225,9 +240,9 @@ app.post("/v2/bookmark/saverecord/", async (req, res) => {
                     .get();
 
     // Check publicity / access
-    if (athenaeum.docs[0].data().access === "private" && athenaeum.docs[0].data().user !== accountNumber) {
+    if (groupData.docs[0].data().access === "private" && groupData.docs[0].data().user !== account.accountNumber) {
         // If the userGroup in the athenaeum and the user's userGroup do not match, and the user's athenaea array does not contain the athenaeumID, return an error
-        if ((athenaeum.docs[0].data().userGroup !== user.docs[0].data().userGroup[0]) && (user.docs[0].data().athenaea.includes(athenaeumID) === false)) {
+        if ((groupData.docs[0].data().userGroup !== account.docs[0].data().userGroup[0]) && (account.docs[0].data().athenaea.includes(athenaeumID) === false)) {
             return res.status(403).json({
                 error: "Access denied",
             });
@@ -248,12 +263,12 @@ app.post("/v2/bookmark/saverecord/", async (req, res) => {
         console.log("NEW RECORD ID", newRecordID);
         console.log("ADDING");
         // Add the record to Firestore (athenaeum_data)
-        await db.collection("athenaeum_data").add({
-          recordCategory: body.recordCategory,
+        await firestore.collection("athenaeum_data").add({
+          recordCategory: recordCategory,
           recordID: newRecordID,
-          recordLinkToData: body.recordLinkToData,
-          recordTags: body.recordTags,
-          recordTitle: body.recordTitle,
+          recordLinkToData: recordLinkToData,
+          recordTags: recordTags,
+          recordTitle: recordTitle,
         });
         console.log("ADDED SUCCESSFULLY");
         // Add the recordID to the athenaeum_roster
@@ -261,10 +276,10 @@ app.post("/v2/bookmark/saverecord/", async (req, res) => {
         console.log("UPDATING ROSTER");
   
         // Get the recordIDs from the athenaeum
-        let recordIDs = athenaeum.docs[0].data().recordIDs;
+        let recordIDs = groupData.docs[0].data().recordIDs;
         recordIDs.push(newRecordID);
         // Update the athenaeum with the new recordID
-        await db.collection("athenaeum_roster").doc(athenaeum.docs[0].id).update({
+        await firestore.collection('athenaeum_roster').doc(groupData.docs[0].id).update({
           recordIDs: recordIDs,
         });
         console.log("ROSTER UPDATED");
@@ -284,15 +299,15 @@ app.post("/v2/bookmark/saverecord/", async (req, res) => {
     // Otherwise, create a new record
     else {
         // Get the record from Firestore (athenaeum_data)
-        const record = await db
+        const record = await firestore
           .collection("athenaeum_data")
           .where("recordID", "==", recordID)
           .get();
-        await db.collection("athenaeum_data").doc(record.docs[0].id).update({
-            recordTitle: body.recordTitle,
-            recordCategory: body.recordCategory,
-            recordTags: body.recordTags,
-            recordLinkToData: body.recordLinkToData,
+        await firestore.collection("athenaeum_data").doc(record.docs[0].id).update({
+            recordTitle: recordTitle,
+            recordCategory: recordCategory,
+            recordTags: recordTags,
+            recordLinkToData: recordLinkToData,
         });
         return res.json({
             message: "Record updated successfully",
