@@ -97,7 +97,6 @@ app.post("/v2/accounts/get/", async (req, res) => {
             bookmarkGroups.push({
                 id: groupID, 
                 title: groupData.docs[0].data().title,
-                showOnHub: groupData.docs[0].data().showOnHub,
             });
         }));
     }
@@ -204,10 +203,9 @@ app.post("/v2/bookmark/get/", async (req, res) => {
         athenaeumData,
         access: groupData.docs[0].data().access,
         atID: groupID,
-        iconLink: null,
+        actionsShortcode: groupData.docs[0].data().actionsShortcode,
         title: groupData.docs[0].data().title,
         type: groupData.docs[0].data().type,
-        showOnHub: groupData.docs[0].data().showOnHub,
         user: groupData.docs[0].data().user,
     });
 });
@@ -266,6 +264,7 @@ app.post("/v2/bookmark/saverecord/", async (req, res) => {
         // Add the record to Firestore (athenaeum_data)
         await firestore.collection("athenaeum_data").add({
           recordCategory: recordCategory,
+          recordActionsSC: recordActionsSC,
           recordID: newRecordID,
           recordLinkToData: recordLinkToData,
           recordTags: recordTags,
@@ -289,6 +288,7 @@ app.post("/v2/bookmark/saverecord/", async (req, res) => {
           message: "Record added successfully",
           record: {
             recordCategory: recordCategory,
+            recordActionsSC: recordActionsSC,
             recordID: newRecordID,
             recordLinkToData: recordLinkToData,
             recordTags: recordTags,
@@ -307,12 +307,14 @@ app.post("/v2/bookmark/saverecord/", async (req, res) => {
         await firestore.collection("athenaeum_data").doc(record.docs[0].id).update({
             recordTitle: recordTitle,
             recordCategory: recordCategory,
+            recordActionsSC: recordActionsSC,
             recordTags: recordTags,
             recordLinkToData: recordLinkToData,
         });
         return res.json({
             message: "Record updated successfully",
             recordCategory: recordCategory,
+            recordActionsSC: recordActionsSC,
             recordID: recordID,
             recordLinkToData: recordLinkToData,
             recordTags: recordTags,
