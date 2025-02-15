@@ -214,7 +214,7 @@ app.post("/v2/bookmark/get/", async (req, res) => {
 // 02 - Create/Edit/Save Record
 app.post("/v2/bookmark/saverecord/", async (req, res) => {
     // Get a0UserId, recordID, recordTitle (string), recordCategory (string), recordTags (array), recordLinkToData and group ID from the request body
-    const { a0UserId, recordID, recordTitle, recordCategory, recordTags, recordLinkToData, groupID } = req.body;
+    const { a0UserId, recordID, recordTitle, recordCategory, recordTags, recordLinkToData, groupID, recordActionsSC } = req.body;
 
     // If any are missing, return an error
     if (!a0UserId || !recordTitle || !recordCategory || !groupID) {
@@ -297,7 +297,7 @@ app.post("/v2/bookmark/saverecord/", async (req, res) => {
         });
     }
 
-    // Otherwise, create a new record
+    // Otherwise, update the record
     else {
         // Get the record from Firestore (athenaeum_data)
         const record = await firestore
